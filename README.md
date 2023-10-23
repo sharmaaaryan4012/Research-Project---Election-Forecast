@@ -1,10 +1,12 @@
+Certainly! Here's your modified README with the updated hyperlink to the original repository by The Economist:
+
 # Election Forecast Model 2016 - Research Project
 
 This repository houses a research project aimed at understanding and extending the Economist's election forecast model from the 2016 United States presidential election. The project is rooted in the implementation of a dynamic multilevel Bayesian model, originally written in R and Stan.
 
 ### Project Overview
 
-The foundation of this project is based on the innovative work conducted by The Economist, which you can explore through their [GitHub repository](https://github.com/TheEconomist). Their model, improving on Pierre Kremp’s adaptation of Drew Linzer’s dynamic linear model for election forecasting (Linzer 2013), integrates corrections for various biases and employs state-level priors and empirical correlations to provide accurate and insightful election predictions.
+The foundation of this project is based on the innovative work conducted by The Economist, which you can explore through their [GitHub repository](https://github.com/TheEconomist/us-potus-model). Their model, improving on Pierre Kremp’s adaptation of Drew Linzer’s dynamic linear model for election forecasting (Linzer 2013), integrates corrections for various biases and employs state-level priors and empirical correlations to provide accurate and insightful election predictions.
 
 In this repository, we delve deeper into the model, specifically focusing on the 2016 US presidential elections, with an aim to:
 
@@ -30,12 +32,8 @@ To dive into this research project, start by cloning this repository and navigat
 
 This project stands on the shoulders of the pioneering work done by The Economist. We express our utmost gratitude and respect for their open-source contributions, which have enabled a wider audience to engage with and learn from their sophisticated modeling techniques.
 
-[Original Repository by The Economist](https://github.com/TheEconomist)
+[Original Repository by The Economist](https://github.com/TheEconomist/us-potus-model)
 
 ### License
 
 This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
-
----
-
-Feel free to modify this description to better suit your project's nuances or to add any additional information that you deem necessary!
