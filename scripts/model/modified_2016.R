@@ -714,7 +714,7 @@ predicted_score <- rstan::extract(out, pars = "predicted_score")[[1]]
 
 
 # state correlation?
-single_draw <- as.data.frame(predicted_score[,dim(predicted_score)[2],])                              # What is this??
+single_draw <- as.data.frame(predicted_score[,dim(predicted_score)[2],])
 names(single_draw) <- colnames(state_correlation_polling)
 single_draw %>% 
   select(AL,CA,FL,MN,NC,NM,RI,WI) %>%  #NV,FL,WI,MI,NH,OH,IA,NC,IN
@@ -786,49 +786,193 @@ election_results <- list(
   VA = 1, WA = 1, WV = 0, WI = 0, WY = 0,
   DC = 1
 )
-
-
-print("***Testing Part***\n")
-
-# Get the unique state identifiers
+state_names <- names(election_results)
 unique_states <- unique(pct_clinton$state)
 
 
-# Initialize an empty data frame to store the results
-results <- data.frame(
-  state_of_interest_1 = character(),
-  selected_prob_1 = numeric(),
-  state_of_interest_2 = character(),
-  selected_prob_2 = numeric(),
-  both_states_won = numeric(),
-  stringsAsFactors = FALSE
-)
+# "
+# *** Brier Score Computation (Method-1): ***
+# "
+#
+# filtered_pct_clinton <- pct_clinton %>%
+#   filter(t == election_day, state %in% names(election_results))
+#
+# brier_scores <- filtered_pct_clinton %>%
+#   mutate(actual_result = election_results[match(state, names(election_results))],
+#          brier_1 = (mean - actual_result)^2) %>%
+#   select(state, actual_result, calculated_probability = mean, brier_1)
+#
+#
+# write_csv(brier_scores, 'brier_scores.csv')
 
-for (state_of_interest_1 in unique_states) {
-  for (state_of_interest_2 in unique_states) {
-    if (state_of_interest_1 != state_of_interest_2) {
-      
-      # Subset pct_clinton to get the probabilities for the first state of interest
-      selected_rows_1 <- pct_clinton[pct_clinton$state == state_of_interest_1, ]
-      winning_prob_state_1 <- selected_rows_1$prob
-      selected_prob_1 <- winning_prob_state_1[253]
-      
-      # Subset pct_clinton to get the probabilities for the second state of interest
-      selected_rows_2 <- pct_clinton[pct_clinton$state == state_of_interest_2, ]
-      winning_prob_state_2 <- selected_rows_2$prob
-      selected_prob_2 <- winning_prob_state_2[253]
-      
-      # Determine if both states won
-      both_states_won <- as.numeric(selected_prob_1 > 0.5 & selected_prob_2 > 0.5)
-      
-      # Add the results to the data frame
-      results <- rbind(results, c(state_of_interest_1, selected_prob_1, state_of_interest_2, selected_prob_2, both_states_won))
-    }
-  }
+
+"
+*** Brier Score Computation (Method-2): ***
+"
+
+# results <- data.frame(
+#   state_of_interest_1 = character(),
+#   state_of_interest_2 = character(),
+#   mean_combined_prob = numeric(),
+#   # brier_score = numeric(),
+#   stringsAsFactors = FALSE
+# )
+#
+# compared_prob <- numeric(254)
+#
+# for (state_of_interest_1 in unique_states) {
+#   for (state_of_interest_2 in unique_states) {
+#     if (state_of_interest_1 != state_of_interest_2) {
+#
+#       selected_rows_1 <- pct_clinton[pct_clinton$state == state_of_interest_1, ]
+#       selected_rows_2 <- pct_clinton[pct_clinton$state == state_of_interest_2, ]
+#
+#       winning_prob_state_1 <- selected_rows_1$prob
+#       winning_prob_state_2 <- selected_rows_2$prob
+#
+#       for (i in 0:253) {
+#         selected_rows_1 <- pct_clinton[pct_clinton$state == state_of_interest_1, ]
+#         selected_rows_2 <- pct_clinton[pct_clinton$state == state_of_interest_2, ]
+#
+#         prob_1 <- selected_rows_1$prob[i]
+#         prob_2 <- selected_rows_2$prob[i]
+#
+#         compared_prob[i] <- as.numeric(prob_1 > 0.5 & prob_2 > 0.5)
+#       }
+#
+#       mean_combined_prob <- mean(compared_prob)
+#
+#       results <- rbind(results, data.frame(
+#         state_of_interest_1 = state_of_interest_1,
+#         state_of_interest_2 = state_of_interest_2,
+#         mean_combined_prob = mean_combined_prob
+#       ))
+#     }
+#   }
+# }
+#
+# # mean_brier_score <- mean(results$brier_score)
+#
+# write.csv(results, "brier-2(Initial Extraction).csv", row.names = FALSE)
+
+
+# Trial - 2
+
+# custom_df <- pblapply(1:dim(predicted_score)[3],
+#                         function(x){
+#                           custom_temp <- predicted_score[,,x]
+#
+#                           is_final_index <- x == dim(predicted_score)[3]
+#
+#                           if (!is_final_index && x <= 253) {
+#                           }
+#
+#                           else {
+#                             tibble(prob = apply(custom_temp, 2, function(x) mean(x > 0.5)),
+#                                    state = x)
+#                           }
+#                         }) %>% do.call('bind_rows', .)
+#
+# write.csv(custom_df, "brier-2(Initial Extraction).csv", row.names = FALSE)
+
+
+# Trial - 3 : one state extraction
+
+# num_simulations <- dim(predicted_score)[1]
+# num_days <- dim(predicted_score)[2]
+# num_states <- dim(predicted_score)[3]
+#
+# custom_df <- data.frame(simulation = integer(),
+#                         day = integer(),
+#                         state = integer(),
+#                         value = numeric())
+#
+# for (state in 1:num_states) {
+#   state_data <- predicted_score[, 254, state]
+#
+#   temp_df <- data.frame(simulation = 1:num_simulations,
+#                         day = rep(254, num_simulations),
+#                         state = rep(state, num_simulations),
+#                         value = state_data)
+#
+#   custom_df <- rbind(custom_df, temp_df)
+# }
+#
+# write.csv(custom_df, "brier-2.csv", row.names = FALSE)
+
+
+# Trial - 3 : two state extraction
+#
+# num_simulations <- dim(predicted_score)[1]
+# num_days <- dim(predicted_score)[2]
+#
+# state_pairs <- combn(51, 2)
+#
+# custom_df <- data.frame(simulation = integer(),
+#                         day = integer(),
+#                         state1 = integer(),
+#                         state2 = integer(),
+#                         value1 = numeric(),
+#                         value2 = numeric())
+#
+# for (i in 1:ncol(state_pairs)) {
+#   state1 <- state_pairs[1, i]
+#   state2 <- state_pairs[2, i]
+#
+#   state1_data <- predicted_score[, 254, state1]
+#   state2_data <- predicted_score[, 254, state2]
+#
+#   temp_df <- data.frame(simulation = 1:num_simulations,
+#                         day = rep(254, num_simulations),
+#                         state1 = rep(state1, num_simulations),
+#                         state2 = rep(state2, num_simulations),
+#                         value1 = state1_data,
+#                         value2 = state2_data)
+#
+#   custom_df <- rbind(custom_df, temp_df)
+# }
+#
+# write.csv(custom_df, "brier-2.csv", row.names = FALSE)
+
+
+# Trial - 3: Taking out the mean for two state solution
+
+num_simulations <- dim(predicted_score)[1]
+num_days <- dim(predicted_score)[2]
+
+state_pairs <- combn(51, 2)                                                                                             # creating a matrix containing unique combination of states
+
+custom_df <- data.frame(state1 = integer(),
+                        state2 = integer(),
+                        mean_combined_prob = numeric())
+
+for (i in 1:ncol(state_pairs)) {                                                                                        # traversing through the pairs of states
+  state1 <- state_pairs[1, i]
+  state2 <- state_pairs[2, i]                                                                                           # store the indices of the two states in the pair
+
+  state1_data <- predicted_score[, 254, state1]
+  state2_data <- predicted_score[, 254, state2]
+
+  CCval <- as.numeric((state1_data > 0.5) & (state2_data > 0.5))
+  CTval <- as.numeric((state1_data > 0.5) & (state2_data < 0.5))
+  TCval <- as.numeric((state1_data < 0.5) & (state2_data > 0.5))
+  TTval <- as.numeric((state1_data < 0.5) & (state2_data < 0.5))
+
+  CCmean <- mean(CCval)                                                                                                 # calculate the mean of 1500 values
+  CTmean <- mean(CTval)
+  TCmean <- mean(TCval)
+  TTmean <- mean(TTval)
+
+  custom_df <- rbind(custom_df, data.frame(state1 = state1,
+                                           state2 = state2,
+                                           CC = CCmean,
+                                           CT = CTmean,
+                                           TC = TCmean,
+                                           TT = TTmean))
 }
 
-# Write the data frame to a CSV file
-write.csv(results, "twoState.csv", row.names = FALSE)
+write.csv(custom_df, "brier-2.csv", row.names = FALSE)
+
 
 
 ex_states <- c('AZ', 'CO', 'FL', 'GA', 'IA', 'ME', 'MI', 'MN', 'MO', 'MS', 'NH', 'NM', 'NV', 'OH', 'PA', 'SC', 'TX', 'VA', 'WI')
@@ -837,87 +981,4 @@ ex_states <- c('AZ', 'CO', 'FL', 'GA', 'IA', 'ME', 'MI', 'MN', 'MO', 'MS', 'NH',
 pct_clinton %>% filter(t == RUN_DATE,state %in% c(ex_states,'--')) %>% mutate(se = (high - mean)/1.96) %>% dplyr::select(-t) %>% print
 pct_clinton %>% filter(t == election_day,state %in% c(ex_states,'--')) %>% mutate(se = (high - mean)/1.96) %>% dplyr::select(-t) %>% print
 
-pct_clinton %>% filter(t == election_day) %>% select(state, clinton=mean) %>% write_csv('~/Desktop/today_2016.csv')
-
-mu_b_t_results_plt <- rbind(mu_b_T_prior_draws, mu_b_T_posterior_draws) %>% 
-  bind_rows(
-    politicaldata::pres_results %>% filter(year == 2016) %>%
-      mutate(mean = dem/(dem+rep)) %>%
-      select(state,mean) %>%
-      mutate(type = 'actual')
-  ) %>%
-  arrange(mean) %>%
-  filter(state != 'DC') %>%
-  ggplot(.) +
-  geom_point(aes(y = mean, x = reorder(state, mean), color = type), position = position_dodge(width = 0.5)) +
-  geom_errorbar(aes(ymin = low, ymax = high, x = state, color = type), width = 0, position = position_dodge(width = 0.5)) +
-  coord_flip() +
-  theme_bw()
-mu_b_t_results_plt
-
-
-map.gg <- urbnmapr::states %>%
-  left_join(pct_clinton %>% filter(t == max(t)) %>%
-              select(state_abbv=state,prob)) %>%
-  ggplot(aes(x=long,y=lat,group=group,fill=prob)) +
-  geom_polygon()  + 
-  coord_map("albers",lat0=39, lat1=45) +
-  scale_fill_gradient2(high='blue',low='red',mid='white',midpoint=0.5) +
-  theme_void()
-
-print(map.gg)
-
-natl_polls.gg <- pct_clinton %>%
-  filter(state == '--') %>%
-  left_join(df %>% select(state,t,pct_clinton,method)) %>% # plot over time
-  # plot
-  ggplot(.,aes(x=t)) +
-  geom_ribbon(aes(ymin=low,ymax=high),col=NA,alpha=0.2) +
-  geom_hline(yintercept = 0.5) +
-  geom_hline(yintercept = national_mu_prior,linetype=2) +
-  geom_point(aes(y=pct_clinton,shape=method),alpha=0.3) +
-  geom_line(aes(y=mean)) +
-  facet_wrap(~state) +
-  theme_minimal()  +
-  theme(legend.position = 'none') +
-  scale_x_date(limits=c(ymd('2016-03-01','2016-11-08')),date_breaks='1 month',date_labels='%b') +
-  scale_y_continuous(breaks=seq(0,1,0.02)) + 
-  labs(subtitletitle=sprintf('clinton natl pct | mean = %s | p(win) = %s',
-                             round(pct_clinton[pct_clinton$state=='--' & pct_clinton$t==election_day,]$mean*100,1),
-                             round(pct_clinton[pct_clinton$state=='--' & pct_clinton$t==election_day,]$prob,2)))
-
-natl_evs.gg <-  ggplot(sim_evs, aes(x=t)) +
-  geom_hline(yintercept = 270) +
-  geom_line(aes(y=median_dem_ev)) +
-  geom_ribbon(aes(ymin=low_dem_ev,ymax=high_dem_ev),alpha=0.2) +
-  theme_minimal()  +
-  theme(legend.position = 'none') +
-  scale_x_date(limits=c(ymd('2016-03-01','2016-11-08')),date_breaks='1 month',date_labels='%b') +
-  labs(subtitletitle=sprintf('clinton evs | median = %s | p(win) = %s',
-                             round(sim_evs[sim_evs$t==election_day,]$median_dem_ev),
-                             round(sim_evs[sim_evs$t==election_day,]$prob,2)))
-
-state_polls.gg <- pct_clinton %>%
-  filter(state %in% ex_states) %>%
-  left_join(df %>% select(state,t,pct_clinton,method)) %>% 
-  left_join(tibble(state = names(mu_b_prior),
-                   prior = inv.logit(mu_b_prior)) ) %>%
-  ggplot(.,aes(x=t,col=state)) +
-  geom_ribbon(aes(ymin=low,ymax=high),col=NA,alpha=0.2) +
-  geom_hline(yintercept = 0.5) +
-  geom_hline(aes(yintercept = prior),linetype=2) +
-  geom_point(aes(y=pct_clinton,shape=method),alpha=0.3) +
-  geom_line(aes(y=mean)) +
-  facet_wrap(~state) +
-  theme_minimal()  +
-  theme(legend.position = 'top') +
-  guides(color='none') +
-  scale_x_date(limits=c(ymd('2016-03-01','2016-11-08')),date_breaks='1 month',date_labels='%b') +
-  labs(subtitle='pct_clinton state')
-
-
-grid.arrange(natl_polls.gg, natl_evs.gg, state_polls.gg, 
-             layout_matrix = rbind(c(1,1,3,3,3),
-                                   c(2,2,3,3,3)),
-             top = identifier
-)
+pct_clinton %>% filter(t == election_day) %>% select(state, clinton=prob) %>% write_csv('today_2016.csv')
