@@ -773,55 +773,75 @@ pct_clinton <- pct_clinton %>%
 options(max.print = .Machine$integer.max)
 
 
-election_results <- list(
-  AL = 0, AK = 0, AZ = 0, AR = 0, CA = 1,
-  CO = 1, CT = 1, DE = 1, FL = 0, GA = 0,
-  HI = 1, ID = 0, IL = 1, IN = 0, IA = 0,
-  KS = 0, KY = 0, LA = 0, ME = 1, MD = 1,
-  MA = 1, MI = 0, MN = 1, MS = 0, MO = 0,
-  MT = 0, NE = 0, NV = 1, NH = 1, NJ = 1,
-  NM = 1, NY = 1, NC = 0, ND = 0, OH = 0,
-  OK = 0, OR = 1, PA = 0, RI = 1, SC = 0,
-  SD = 0, TN = 0, TX = 0, UT = 0, VT = 1,
-  VA = 1, WA = 1, WV = 0, WI = 0, WY = 0,
-  DC = 1
-)
-state_names <- names(election_results)
-unique_states <- unique(pct_clinton$state)
+election_results <- c(AL = 0, AK = 0, AZ = 0, AR = 0, CA = 1, CO = 1, CT = 1,
+                      DC = 1, DE = 1, FL = 0, GA = 0, HI = 1, ID = 0, IL = 1,
+                      IN = 0, IA = 0, KS = 0, KY = 0, LA = 0, ME = 1, MD = 1,
+                      MA = 1, MI = 0, MN = 1, MS = 0, MO = 0, MT = 0, NE = 0,
+                      NV = 1, NH = 1, NJ = 1, NM = 1, NY = 1, NC = 0, ND = 0,
+                      OH = 0, OK = 0, OR = 1, PA = 0, RI = 1, SC = 0, SD = 0,
+                      TN = 0, TX = 0, UT = 0, VT = 1, VA = 1, WA = 1, WV = 0,
+                      WI = 0, WY = 0)
 
 
-# "
-# *** Brier Score Computation (Method-1): ***
-# "
-#
-# filtered_pct_clinton <- pct_clinton %>%
-#   filter(t == election_day, state %in% names(election_results))
-#
-# brier_scores <- filtered_pct_clinton %>%
-#   mutate(actual_result = election_results[match(state, names(election_results))],
-#          brier_1 = (mean - actual_result)^2) %>%
-#   select(state, actual_result, calculated_probability = mean, brier_1)
-#
-#
-# write_csv(brier_scores, 'brier_scores.csv')
+state_abbreviations <- c("AK", "AL", "AR", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI",
+                         "IA", "ID", "IL", "IN", "KS", "KY", "LA", "MA", "MD", "ME", "MI", "MN",
+                         "MO", "MS", "MT", "NC", "ND", "NE", "NH", "NJ", "NM", "NV", "NY", "OH",
+                         "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VA", "VT", "WA",
+                         "WI", "WV", "WY")
+
+specified_states <- c('AZ', 'CO', 'FL', 'GA', 'IA', 'ME', 'MI', 'MN', 'MO', 'MS', 'NC', 'NH',
+                      'NM', 'NV', 'OH', 'PA', 'SC', 'TX', 'VA', 'WI')
+
+
+"
+*** Brier Score Computation (Method-1): ***
+"
+
+
+num_simulations <- dim(predicted_score)[1]
+num_days <- dim(predicted_score)[2]
+
+
+brier1_df <- data.frame(state = integer(),
+                        mean_combined_prob = numeric())
+
+for (i in 1:length(state_abbreviations)) {
+  state_data <- predicted_score[, 254, i]
+
+  probVal <- as.numeric(state_data > 0.5)
+  probMean <- mean(probVal)  # Brier score calculation
+  state_abbr <- state_abbreviations[i]
+  actual_outcome <- election_results[state_abbr]
+  brier_score <- mean((probMean - actual_outcome)^2)
+
+  actual_outcome <- round(actual_outcome, 3)  # Rounding-off values
+  probMean <- round(probMean, 3)
+  brier_score <- round(brier_score, 3)
+
+  brier1_df <- rbind(brier1_df, data.frame(state = state_abbr,
+                                           actual = actual_outcome,
+                                           prob = probMean,
+                                           brier_score = brier_score))
+}
+
+write.csv(brier1_df, "brier-1(Unfiltered).csv", row.names = FALSE)
+brier1_df_filtered <- brier1_df[brier1_df$state %in% specified_states,]
+write.csv(brier1_df_filtered, "brier-1(Filtered).csv", row.names = FALSE)
 
 
 "
 *** Brier Score Computation (Method-2): ***
 "
 
-num_simulations <- dim(predicted_score)[1]
-num_days <- dim(predicted_score)[2]
+state_pairs <- combn(51, 2)  # Creating a matrix containing unique combinations of states
 
-state_pairs <- combn(51, 2)                                                                                             # creating a matrix containing unique combination of states
-
-custom_df <- data.frame(state1 = integer(),
+brier2_df <- data.frame(state1 = integer(),
                         state2 = integer(),
                         mean_combined_prob = numeric())
 
-for (i in 1:ncol(state_pairs)) {                                                                                        # traversing through the pairs of states
+for (i in 1:ncol(state_pairs)) {
   state1 <- state_pairs[1, i]
-  state2 <- state_pairs[2, i]                                                                                           # store the indices of the two states in the pair
+  state2 <- state_pairs[2, i]
 
   state1_data <- predicted_score[, 254, state1]
   state2_data <- predicted_score[, 254, state2]
@@ -831,21 +851,65 @@ for (i in 1:ncol(state_pairs)) {                                                
   TCval <- as.numeric((state1_data < 0.5) & (state2_data > 0.5))
   TTval <- as.numeric((state1_data < 0.5) & (state2_data < 0.5))
 
-  CCmean <- mean(CCval)                                                                                                 # calculate the mean of 1500 values
-  CTmean <- mean(CTval)
-  TCmean <- mean(TCval)
-  TTmean <- mean(TTval)
+  state1_abbr <- state_abbreviations[state1]
+  state2_abbr <- state_abbreviations[state2]
+  combProb <- as.numeric((election_results[state1_abbr]>0.5) & (election_results[state2_abbr]>0.5))
 
-  custom_df <- rbind(custom_df, data.frame(state1 = state1,
-                                           state2 = state2,
-                                           CC = CCmean,
-                                           CT = CTmean,
-                                           TC = TCmean,
-                                           TT = TTmean))
+  CCmean <- round(mean(CCval),3)
+  CCprob <- as.numeric((election_results[state1_abbr]>0.5) & (election_results[state2_abbr]>0.5))
+  CTmean <- round(mean(CTval),3)
+  CTprob <- as.numeric((election_results[state1_abbr]>0.5) & (election_results[state2_abbr]<0.5))
+  TCmean <- round(mean(TCval),3)
+  TCprob <- as.numeric((election_results[state1_abbr]<0.5) & (election_results[state2_abbr]>0.5))
+  TTmean <- round(mean(TTval),3)
+  TTprob <- as.numeric((election_results[state1_abbr]<0.5) & (election_results[state2_abbr]<0.5))
+
+  CCbrier <- ((CCprob - CCmean)^2)
+  CTbrier <- ((CTprob - CTmean)^2)
+  TCbrier <- ((TCprob - TCmean)^2)
+  TTbrier <- ((TTprob - TTmean)^2)
+  AvgBrier <- ((CCbrier + CTbrier + TCbrier + TTbrier)/4)
+
+  brier2_df <- rbind(brier2_df, data.frame(state1 = state1_abbr,
+                                           state2 = state2_abbr,
+                                           CC = CCbrier,
+                                           CT = CTbrier,
+                                           TC = TCbrier,
+                                           TT = TTbrier,
+                                           Avg = AvgBrier))
 }
 
-write.csv(custom_df, "brier-2.csv", row.names = FALSE)
+write.csv(brier2_df, "brier-2(Unfiltered).csv", row.names = FALSE)
 
+brier2_df <- brier2_df[brier2_df$state1 %in% specified_states & brier2_df$state2 %in% specified_states,]
+
+write.csv(brier2_df, "brier-2(Filtered).csv", row.names = FALSE)
+
+
+
+"
+*** Brier Score Computation (Method-3): ***
+"
+
+brier1_df_filtered <- brier1_df[brier1_df$state %in% specified_states, ]
+brier2_df_filtered <- brier2_df[brier2_df$state1 %in% specified_states & brier2_df$state2 %in% specified_states,]
+
+brier3_df <- merge(brier2_df_filtered, brier1_df_filtered, by.x = "state1", by.y = "state", all.x = TRUE)
+brier3_df <- merge(brier3_df, brier1_df_filtered, by.x = "state2", by.y = "state", all.x = TRUE, suffixes = c("_state1", "_state2"))
+
+brier3_df <- brier3_df[, c("state1", "brier_score_state1", "state2", "brier_score_state2", "CC", "CT", "TC", "TT", "Avg")]
+
+brier3_df$CCcomb <- (brier3_df$brier_score_state1 + brier3_df$brier_score_state2 + brier3_df$CC)/3
+brier3_df$CTcomb <- (brier3_df$brier_score_state1 + brier3_df$brier_score_state2 + brier3_df$CT)/3
+brier3_df$TCcomb <- (brier3_df$brier_score_state1 + brier3_df$brier_score_state2 + brier3_df$TC)/3
+brier3_df$TTcomb <- (brier3_df$brier_score_state1 + brier3_df$brier_score_state2 + brier3_df$TT)/3
+brier3_df$AVGcomb <- (brier3_df$brier_score_state1 + brier3_df$brier_score_state2 + brier3_df$Avg)/3
+
+write.csv(brier3_df, "brier-3.csv", row.names = FALSE)
+
+"
+-------------------------------------------
+"
 
 
 ex_states <- c('AZ', 'CO', 'FL', 'GA', 'IA', 'ME', 'MI', 'MN', 'MO', 'MS', 'NH', 'NM', 'NV', 'OH', 'PA', 'SC', 'TX', 'VA', 'WI')
