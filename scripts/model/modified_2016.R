@@ -814,9 +814,9 @@ for (i in 1:length(state_abbreviations)) {
   actual_outcome <- election_results[state_abbr]
   brier_score <- mean((probMean - actual_outcome)^2)
 
-  actual_outcome <- round(actual_outcome, 3)  # Rounding-off values
-  probMean <- round(probMean, 3)
-  brier_score <- round(brier_score, 3)
+  actual_outcome <- round(actual_outcome, 5)  # Rounding-off values
+  probMean <- round(probMean, 5)
+  brier_score <- round(brier_score, 5)
 
   brier1_df <- rbind(brier1_df, data.frame(state = state_abbr,
                                            actual = actual_outcome,
@@ -846,28 +846,31 @@ for (i in 1:ncol(state_pairs)) {
   state1_data <- predicted_score[, 254, state1]
   state2_data <- predicted_score[, 254, state2]
 
-  CCval <- as.numeric((state1_data > 0.5) & (state2_data > 0.5))
-  CTval <- as.numeric((state1_data > 0.5) & (state2_data < 0.5))
-  TCval <- as.numeric((state1_data < 0.5) & (state2_data > 0.5))
-  TTval <- as.numeric((state1_data < 0.5) & (state2_data < 0.5))
-
   state1_abbr <- state_abbreviations[state1]
   state2_abbr <- state_abbreviations[state2]
-  combProb <- as.numeric((election_results[state1_abbr]>0.5) & (election_results[state2_abbr]>0.5))
 
-  CCmean <- round(mean(CCval),3)
+  CCval <- as.numeric((state1_data > 0.5) & (state2_data > 0.5))
   CCprob <- as.numeric((election_results[state1_abbr]>0.5) & (election_results[state2_abbr]>0.5))
-  CTmean <- round(mean(CTval),3)
+  CTval <- as.numeric((state1_data > 0.5) & (state2_data < 0.5))
   CTprob <- as.numeric((election_results[state1_abbr]>0.5) & (election_results[state2_abbr]<0.5))
-  TCmean <- round(mean(TCval),3)
+  TCval <- as.numeric((state1_data < 0.5) & (state2_data > 0.5))
   TCprob <- as.numeric((election_results[state1_abbr]<0.5) & (election_results[state2_abbr]>0.5))
-  TTmean <- round(mean(TTval),3)
+  TTval <- as.numeric((state1_data < 0.5) & (state2_data < 0.5))
   TTprob <- as.numeric((election_results[state1_abbr]<0.5) & (election_results[state2_abbr]<0.5))
 
-  CCbrier <- ((CCprob - CCmean)^2)
-  CTbrier <- ((CTprob - CTmean)^2)
-  TCbrier <- ((TCprob - TCmean)^2)
-  TTbrier <- ((TTprob - TTmean)^2)
+  CCmean <- round(mean(CCval),5)
+  CCProbMean <- round(mean(CCprob),5)
+  CTmean <- round(mean(CTval),5)
+  CTProbMean <- round(mean(CTprob),5)
+  TCmean <- round(mean(TCval),5)
+  TCProbMean <- round(mean(TCprob),5)
+  TTmean <- round(mean(TTval),5)
+  TTProbMean <- round(mean(TTprob),5)
+
+  CCbrier <- ((CCProbMean - CCmean)^2)
+  CTbrier <- ((CTProbMean - CTmean)^2)
+  TCbrier <- ((TCProbMean - TCmean)^2)
+  TTbrier <- ((TTProbMean - TTmean)^2)
   AvgBrier <- ((CCbrier + CTbrier + TCbrier + TTbrier)/4)
 
   brier2_df <- rbind(brier2_df, data.frame(state1 = state1_abbr,
